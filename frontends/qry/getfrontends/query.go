@@ -17,7 +17,7 @@ type Query struct {
 }
 
 // New creates a new Get Frontends Query
-func New(repo interfaces.FrontendRepository) (*Query, error) {
+func NewQuery(repo interfaces.FrontendRepository) (*Query, error) {
 	if repo == nil {
 		return nil, ErrMissingFrontendRepository
 	}

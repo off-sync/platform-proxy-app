@@ -10,14 +10,14 @@ import (
 )
 
 func TestNew(t *testing.T) {
-	q, err := New(&dummyRepo{})
+	q, err := NewQuery(&dummyRepo{})
 
 	assert.NotNil(t, q)
 	assert.Nil(t, err)
 }
 
 func TestNewShouldReturnErrorOnMissingRepository(t *testing.T) {
-	q, err := New(nil)
+	q, err := NewQuery(nil)
 
 	assert.Nil(t, q)
 	assert.NotNil(t, err)
@@ -26,7 +26,7 @@ func TestNewShouldReturnErrorOnMissingRepository(t *testing.T) {
 }
 
 func TestExecute(t *testing.T) {
-	q, _ := New(&dummyRepo{
+	q, _ := NewQuery(&dummyRepo{
 		frontendNames: []string{"test1", "test2"},
 	})
 
@@ -37,7 +37,7 @@ func TestExecute(t *testing.T) {
 }
 
 func TestExecuteShouldReturnErrorFromRepository(t *testing.T) {
-	q, _ := New(&dummyRepo{})
+	q, _ := NewQuery(&dummyRepo{})
 
 	r, err := q.Execute(&Model{})
 
