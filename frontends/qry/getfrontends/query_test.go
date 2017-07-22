@@ -27,7 +27,7 @@ func TestNewShouldReturnErrorOnMissingRepository(t *testing.T) {
 
 func TestExecute(t *testing.T) {
 	q, _ := New(&dummyRepo{
-		frontendURLs: []string{"http://test1", "http://test2"},
+		frontendNames: []string{"test1", "test2"},
 	})
 
 	r, err := q.Execute(&Model{})
@@ -46,35 +46,35 @@ func TestExecuteShouldReturnErrorFromRepository(t *testing.T) {
 }
 
 type dummyRepo struct {
-	frontendURLs []string
+	frontendNames []string
 }
 
 func (r *dummyRepo) FindAll() ([]*frontends.Frontend, error) {
-	if len(r.frontendURLs) < 1 {
+	if len(r.frontendNames) < 1 {
 		// return error in case the list is empty
 		return nil, errors.New("no frontend URLs configured")
 	}
 
-	fs := make([]*frontends.Frontend, len(r.frontendURLs))
-	for i, u := range r.frontendURLs {
-		fs[i] = mockFrontend(u)
+	fs := make([]*frontends.Frontend, len(r.frontendNames))
+	for i, n := range r.frontendNames {
+		fs[i] = mockFrontend(n)
 	}
 
 	return fs, nil
 }
 
-func (r *dummyRepo) FindByFrontendURL(frontendURL string) (*frontends.Frontend, error) {
-	for _, u := range r.frontendURLs {
-		if frontendURL == u {
-			return mockFrontend(u), nil
+func (r *dummyRepo) FindByName(name string) (*frontends.Frontend, error) {
+	for _, n := range r.frontendNames {
+		if name == n {
+			return mockFrontend(n), nil
 		}
 	}
 
 	return nil, interfaces.ErrUnknownFrontend
 }
 
-func mockFrontend(frontendURL string) *frontends.Frontend {
-	f, err := frontends.NewFrontend(frontendURL, nil, "service:"+frontendURL)
+func mockFrontend(name string) *frontends.Frontend {
+	f, err := frontends.NewFrontend(name, "http://"+name, nil, "service:"+name)
 	if err != nil {
 		// should not happen
 		panic(err)

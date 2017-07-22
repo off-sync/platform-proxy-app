@@ -18,5 +18,5 @@ type FrontendRepository interface {
 
 	// FindByName returns the frontend with the specified name. If no frontend
 	// exists with that name an ErrUnknownFrontend is returned.
-	FindByFrontendURL(frontendURL string) (*frontends.Frontend, error)
+	FindByName(name string) (*frontends.Frontend, error)
 }
