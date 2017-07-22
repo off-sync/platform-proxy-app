@@ -9,5 +9,5 @@ type ServiceEvent struct {
 // ServiceWatcher defines an interface for a service watcher against which
 // it is possible to subscribe for service changes.
 type ServiceWatcher interface {
-	Subscribe(chan<- ServiceEvent)
+	Subscribe(events chan<- ServiceEvent)
 }
