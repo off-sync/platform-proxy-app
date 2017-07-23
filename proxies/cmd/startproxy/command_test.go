@@ -5,13 +5,18 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Sirupsen/logrus"
+	"github.com/off-sync/platform-proxy-app/infra/logging"
 	"github.com/stretchr/testify/assert"
 )
+
+var logger = logging.NewLogrusLogger(logrus.New())
 
 func TestNewCommand(t *testing.T) {
 	c, err := NewCommand(
 		&dummyFrontendRepository{},
-		&dummyServiceRepository{})
+		&dummyServiceRepository{},
+		logger)
 
 	assert.NotNil(t, c)
 	assert.Nil(t, err)
@@ -20,7 +25,8 @@ func TestNewCommand(t *testing.T) {
 func TestNewCommandShouldReturnErrorOnMissingFrontendRepository(t *testing.T) {
 	c, err := NewCommand(
 		nil,
-		&dummyServiceRepository{})
+		&dummyServiceRepository{},
+		logger)
 
 	assert.Nil(t, c)
 	assert.NotNil(t, err)
@@ -31,7 +37,8 @@ func TestNewCommandShouldReturnErrorOnMissingFrontendRepository(t *testing.T) {
 func TestNewCommandShouldReturnErrorOnMissingServiceRepository(t *testing.T) {
 	c, err := NewCommand(
 		&dummyFrontendRepository{},
-		nil)
+		nil,
+		logger)
 
 	assert.Nil(t, c)
 	assert.NotNil(t, err)
@@ -43,7 +50,7 @@ func TestNewCommandWithWatchers(t *testing.T) {
 	fr := &dummyFrontendRepository{}
 	sr := &dummyServiceRepository{}
 
-	c, err := NewCommandWithWatchers(fr, sr, fr, sr)
+	c, err := NewCommandWithWatchers(fr, sr, fr, sr, logger)
 
 	assert.NotNil(t, c)
 	assert.Nil(t, err)
@@ -53,7 +60,7 @@ func TestNewCommandWithWatchersShouldReturnErrorOnMissingFrontendRepository(t *t
 	fr := &dummyFrontendRepository{}
 	sr := &dummyServiceRepository{}
 
-	c, err := NewCommandWithWatchers(nil, sr, fr, sr)
+	c, err := NewCommandWithWatchers(nil, sr, fr, sr, logger)
 
 	assert.Nil(t, c)
 	assert.NotNil(t, err)
@@ -65,7 +72,7 @@ func TestNewCommandWithWatchersShouldReturnErrorOnMissingServiceRepository(t *te
 	fr := &dummyFrontendRepository{}
 	sr := &dummyServiceRepository{}
 
-	c, err := NewCommandWithWatchers(fr, nil, fr, sr)
+	c, err := NewCommandWithWatchers(fr, nil, fr, sr, logger)
 
 	assert.Nil(t, c)
 	assert.NotNil(t, err)
@@ -77,7 +84,7 @@ func TestNewCommandWithWatchersShouldReturnErrorOnMissingFrontendWatcher(t *test
 	fr := &dummyFrontendRepository{}
 	sr := &dummyServiceRepository{}
 
-	c, err := NewCommandWithWatchers(fr, sr, nil, sr)
+	c, err := NewCommandWithWatchers(fr, sr, nil, sr, logger)
 
 	assert.Nil(t, c)
 	assert.NotNil(t, err)
@@ -89,7 +96,7 @@ func TestNewCommandWithWatchersShouldReturnErrorOnMissingServiceWatcher(t *testi
 	fr := &dummyFrontendRepository{}
 	sr := &dummyServiceRepository{}
 
-	c, err := NewCommandWithWatchers(fr, sr, fr, nil)
+	c, err := NewCommandWithWatchers(fr, sr, fr, nil, logger)
 
 	assert.Nil(t, c)
 	assert.NotNil(t, err)
@@ -101,7 +108,7 @@ func TestExecute(t *testing.T) {
 	fr := &dummyFrontendRepository{}
 	sr := &dummyServiceRepository{}
 
-	c, _ := NewCommandWithWatchers(fr, sr, fr, sr)
+	c, _ := NewCommandWithWatchers(fr, sr, fr, sr, logger)
 
 	ctx, cancel := context.WithCancel(context.Background())
 
@@ -121,7 +128,7 @@ func TestExecuteShouldReturnErrorOnMissingWebServers(t *testing.T) {
 	fr := &dummyFrontendRepository{}
 	sr := &dummyServiceRepository{}
 
-	c, _ := NewCommandWithWatchers(fr, sr, fr, sr)
+	c, _ := NewCommandWithWatchers(fr, sr, fr, sr, logger)
 
 	err := c.Execute(&Model{})
 
@@ -134,7 +141,7 @@ func TestExecuteShouldAcceptNilContext(t *testing.T) {
 	fr := &dummyFrontendRepository{}
 	sr := &dummyServiceRepository{}
 
-	c, _ := NewCommandWithWatchers(fr, sr, fr, sr)
+	c, _ := NewCommandWithWatchers(fr, sr, fr, sr, logger)
 
 	err := c.Execute(&Model{
 		HTTPWebServer:   &dummyWebServer{},
@@ -150,7 +157,7 @@ func TestExecuteShouldReturnErrorOnNegativeDuration(t *testing.T) {
 	fr := &dummyFrontendRepository{}
 	sr := &dummyServiceRepository{}
 
-	c, _ := NewCommandWithWatchers(fr, sr, fr, sr)
+	c, _ := NewCommandWithWatchers(fr, sr, fr, sr, logger)
 
 	ctx, cancel := context.WithCancel(context.Background())
 

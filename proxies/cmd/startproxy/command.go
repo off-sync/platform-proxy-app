@@ -24,13 +24,15 @@ type Command struct {
 	frontendWatcher    interfaces.FrontendWatcher
 	serviceRepository  interfaces.ServiceRepository
 	serviceWatcher     interfaces.ServiceWatcher
+	logger             interfaces.Logger
 }
 
 // NewCommand creates a new Start Proxy Command using the provided frontend
 // and service repositories.
 func NewCommand(
 	frontendRepository interfaces.FrontendRepository,
-	serviceRepository interfaces.ServiceRepository) (*Command, error) {
+	serviceRepository interfaces.ServiceRepository,
+	logger interfaces.Logger) (*Command, error) {
 	if frontendRepository == nil {
 		return nil, ErrFrontendRepositoryMissing
 	}
@@ -42,6 +44,7 @@ func NewCommand(
 	return &Command{
 		frontendRepository: frontendRepository,
 		serviceRepository:  serviceRepository,
+		logger:             logger,
 	}, nil
 }
 
@@ -50,8 +53,9 @@ func NewCommand(
 func NewCommandWithWatchers(frontendRepository interfaces.FrontendRepository,
 	serviceRepository interfaces.ServiceRepository,
 	frontendWatcher interfaces.FrontendWatcher,
-	serviceWatcher interfaces.ServiceWatcher) (*Command, error) {
-	c, err := NewCommand(frontendRepository, serviceRepository)
+	serviceWatcher interfaces.ServiceWatcher,
+	logger interfaces.Logger) (*Command, error) {
+	c, err := NewCommand(frontendRepository, serviceRepository, logger)
 	if err != nil {
 		return nil, err
 	}
