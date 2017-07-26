@@ -88,7 +88,18 @@ func (c *Command) Execute(model *Model) error {
 		model.Ctx = context.Background()
 	}
 
-	go runProxy(c, model)
+	proxy := newProxy(
+		model.Ctx,
+		c.logger,
+		c.frontendRepository,
+		c.frontendWatcher,
+		c.serviceRepository,
+		c.serviceWatcher,
+		model.PollingDuration,
+		model.HTTPWebServer,
+		model.HTTPSWebServer)
+
+	go proxy.run()
 
 	return nil
 }

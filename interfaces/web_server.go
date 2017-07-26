@@ -3,6 +3,8 @@ package interfaces
 import (
 	"net/http"
 	"net/url"
+
+	"github.com/off-sync/platform-proxy-domain/frontends"
 )
 
 // WebServer defines an interface provides methods to upsert and delete routes
@@ -14,4 +16,7 @@ type WebServer interface {
 
 	// DeleteRoute deletes a route from the web server.
 	DeleteRoute(route *url.URL)
+
+	// UpsertCertificate sets the certificate for the provided domain name.
+	UpsertCertificate(domainName string, cert *frontends.Certificate) error
 }

@@ -7,10 +7,18 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/off-sync/platform-proxy-app/infra/logging"
+	"github.com/off-sync/platform-proxy-app/interfaces"
 	"github.com/stretchr/testify/assert"
 )
 
-var logger = logging.NewLogrusLogger(logrus.New())
+var logger interfaces.Logger
+
+func init() {
+	l := logrus.New()
+	l.Level = logrus.DebugLevel
+
+	logger = logging.NewLogrusLogger(l)
+}
 
 func TestNewCommand(t *testing.T) {
 	c, err := NewCommand(
@@ -105,21 +113,23 @@ func TestNewCommandWithWatchersShouldReturnErrorOnMissingServiceWatcher(t *testi
 }
 
 func TestExecute(t *testing.T) {
-	fr := &dummyFrontendRepository{}
-	sr := &dummyServiceRepository{}
+	fr := &dummyFrontendRepository{frontendNames: []string{"testapp"}}
+	sr := &dummyServiceRepository{serviceNames: []string{"testapp"}}
 
 	c, _ := NewCommandWithWatchers(fr, sr, fr, sr, logger)
 
 	ctx, cancel := context.WithCancel(context.Background())
 
 	err := c.Execute(&Model{
+		Ctx:             ctx,
 		HTTPWebServer:   &dummyWebServer{},
 		HTTPSWebServer:  &dummyWebServer{},
-		Ctx:             ctx,
-		PollingDuration: 60 * time.Second,
+		PollingDuration: 1 * time.Second,
 	})
 
 	assert.Nil(t, err)
+
+	time.Sleep(3 * time.Second)
 
 	cancel()
 }

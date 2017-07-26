@@ -2,6 +2,7 @@ package startproxy
 
 import (
 	"errors"
+	"time"
 
 	"github.com/off-sync/platform-proxy-app/interfaces"
 	"github.com/off-sync/platform-proxy-domain/services"
@@ -36,11 +37,13 @@ func (r *dummyServiceRepository) FindByName(name string) (*services.Service, err
 }
 
 func (r *dummyServiceRepository) Subscribe(events chan<- interfaces.ServiceEvent) {
-	// do nothing
+	time.AfterFunc(2200*time.Millisecond, func() {
+		events <- interfaces.ServiceEvent{Name: "testapp"}
+	})
 }
 
 func mockService(name string) *services.Service {
-	f, err := services.NewService(name, "http://"+name+":8080", "http://"+name+":8081")
+	f, err := services.NewService(name, "http://127.0.0.1:8080", "http://127.0.0.1:8080")
 	if err != nil {
 		// should not happen
 		panic(err)

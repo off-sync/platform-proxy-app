@@ -2,6 +2,7 @@ package startproxy
 
 import (
 	"errors"
+	"time"
 
 	"github.com/off-sync/platform-proxy-app/interfaces"
 	"github.com/off-sync/platform-proxy-domain/frontends"
@@ -36,11 +37,13 @@ func (r *dummyFrontendRepository) FindByName(name string) (*frontends.Frontend, 
 }
 
 func (r *dummyFrontendRepository) Subscribe(events chan<- interfaces.FrontendEvent) {
-	// do nothing
+	time.AfterFunc(1200*time.Millisecond, func() {
+		events <- interfaces.FrontendEvent{Name: "testapp"}
+	})
 }
 
 func mockFrontend(name string) *frontends.Frontend {
-	f, err := frontends.NewFrontend(name, "http://"+name, nil, "service:"+name)
+	f, err := frontends.NewFrontend(name, "http://"+name, nil, name)
 	if err != nil {
 		// should not happen
 		panic(err)
