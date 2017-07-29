@@ -8,9 +8,10 @@ import (
 	"time"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/stretchr/testify/assert"
+
 	"github.com/off-sync/platform-proxy-app/infra/logging"
 	"github.com/off-sync/platform-proxy-app/interfaces"
-	"github.com/stretchr/testify/assert"
 )
 
 var logger interfaces.Logger
@@ -58,7 +59,7 @@ func TestNewCommandShouldReturnErrorOnMissingFrontendRepository(t *testing.T) {
 
 func TestExecute(t *testing.T) {
 	sr := &dummyServiceRepository{serviceNames: []string{"testapp"}}
-	fr := &dummyFrontendRepository{frontendNames: []string{"testapp", "noservice"}}
+	fr := &dummyFrontendRepository{frontendNames: []string{"testapp", "secure-testapp", "noservice"}}
 
 	c, _ := NewCommand(sr, fr, logger)
 
@@ -69,12 +70,12 @@ func TestExecute(t *testing.T) {
 		WebServer:       &dummyWebServer{},
 		SecureWebServer: &dummyWebServer{},
 		LoadBalancer:    &dummyLoadBalancer{},
-		PollingDuration: 1 * time.Second,
+		PollingDuration: 500 * time.Millisecond,
 	})
 
 	assert.Nil(t, err)
 
-	time.Sleep(3 * time.Second)
+	time.Sleep(1100 * time.Millisecond)
 
 	cancel()
 }
@@ -82,6 +83,48 @@ func TestExecute(t *testing.T) {
 func TestExecuteShouldLogRepositoryErrors(t *testing.T) {
 	sr := &dummyServiceRepository{}
 	fr := &dummyFrontendRepository{}
+
+	c, _ := NewCommand(sr, fr, logger)
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	err := c.Execute(&Model{
+		Ctx:             ctx,
+		WebServer:       &dummyWebServer{},
+		SecureWebServer: &dummyWebServer{},
+		LoadBalancer:    &dummyLoadBalancer{},
+		PollingDuration: 60 * time.Second,
+	})
+
+	assert.Nil(t, err)
+
+	cancel()
+}
+
+func TestExecuteShouldLogDescribeServiceErrors(t *testing.T) {
+	sr := &dummyServiceRepository{[]string{"fail"}}
+	fr := &dummyFrontendRepository{[]string{"testapp"}}
+
+	c, _ := NewCommand(sr, fr, logger)
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	err := c.Execute(&Model{
+		Ctx:             ctx,
+		WebServer:       &dummyWebServer{},
+		SecureWebServer: &dummyWebServer{},
+		LoadBalancer:    &dummyLoadBalancer{},
+		PollingDuration: 60 * time.Second,
+	})
+
+	assert.Nil(t, err)
+
+	cancel()
+}
+
+func TestExecuteShouldLogDescribeFrontendErrors(t *testing.T) {
+	sr := &dummyServiceRepository{[]string{"testapp"}}
+	fr := &dummyFrontendRepository{[]string{"fail"}}
 
 	c, _ := NewCommand(sr, fr, logger)
 
@@ -123,7 +166,7 @@ func TestExecuteShouldLogWebServerErrors(t *testing.T) {
 
 func TestExecuteShouldLogLoadBalancerErrors(t *testing.T) {
 	sr := &dummyServiceRepository{serviceNames: []string{"testapp"}}
-	fr := &dummyFrontendRepository{frontendNames: []string{"testapp"}}
+	fr := &dummyFrontendRepository{frontendNames: []string{"testapp", "testapp2"}}
 
 	c, _ := NewCommand(sr, fr, logger)
 
@@ -142,7 +185,7 @@ func TestExecuteShouldLogLoadBalancerErrors(t *testing.T) {
 	assert.Nil(t, err)
 
 	// give proxy time to configure
-	time.Sleep(1 * time.Second)
+	time.Sleep(200 * time.Millisecond)
 
 	u, _ := url.Parse("http://testapp")
 	resp := web.Handle(u, &http.Request{})

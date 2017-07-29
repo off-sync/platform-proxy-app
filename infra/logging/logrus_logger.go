@@ -16,23 +16,23 @@ func NewLogrusLogger(logger *logrus.Logger) interfaces.Logger {
 }
 
 func (l *logrusLogger) Debug(args ...interface{}) {
-	l.l.Debug(args)
+	l.l.Debug(args...)
 }
 
 func (l *logrusLogger) Info(args ...interface{}) {
-	l.l.Info(args)
+	l.l.Info(args...)
 }
 
 func (l *logrusLogger) Warn(args ...interface{}) {
-	l.l.Warn(args)
+	l.l.Warn(args...)
 }
 
 func (l *logrusLogger) Error(args ...interface{}) {
-	l.l.Error(args)
+	l.l.Error(args...)
 }
 
 func (l *logrusLogger) Fatal(args ...interface{}) {
-	l.l.Fatal(args)
+	l.l.Fatal(args...)
 }
 
 func (l *logrusLogger) WithField(field string, value interface{}) interfaces.Logger {
@@ -48,23 +48,23 @@ type logrusEntry struct {
 }
 
 func (e *logrusEntry) Debug(args ...interface{}) {
-	e.e.Debug(args)
+	e.e.Debug(args...)
 }
 
 func (e *logrusEntry) Info(args ...interface{}) {
-	e.e.Info(args)
+	e.e.Info(args...)
 }
 
 func (e *logrusEntry) Warn(args ...interface{}) {
-	e.e.Warn(args)
+	e.e.Warn(args...)
 }
 
 func (e *logrusEntry) Error(args ...interface{}) {
-	e.e.Error(args)
+	e.e.Error(args...)
 }
 
 func (e *logrusEntry) Fatal(args ...interface{}) {
-	e.e.Fatal(args)
+	e.e.Fatal(args...)
 }
 
 func (e *logrusEntry) WithField(field string, value interface{}) interfaces.Logger {

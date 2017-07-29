@@ -2,6 +2,7 @@ package startproxy
 
 import (
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/off-sync/platform-proxy-app/interfaces"
@@ -22,6 +23,10 @@ func (r *dummyServiceRepository) ListServices() ([]string, error) {
 }
 
 func (r *dummyServiceRepository) DescribeService(name string) (*services.Service, error) {
+	if name == "fail" {
+		return nil, fmt.Errorf("DescribeService(%s)", name)
+	}
+
 	for _, n := range r.serviceNames {
 		if name == n {
 			return mockService(n), nil
@@ -31,14 +36,24 @@ func (r *dummyServiceRepository) DescribeService(name string) (*services.Service
 	return nil, interfaces.ErrUnknownService
 }
 
-func (r *dummyServiceRepository) Subscribe(events chan<- interfaces.ServiceEvent) {
-	time.AfterFunc(2200*time.Millisecond, func() {
+func (r *dummyServiceRepository) Subscribe() <-chan interfaces.ServiceEvent {
+	events := make(chan interfaces.ServiceEvent)
+
+	time.AfterFunc(200*time.Millisecond, func() {
 		events <- interfaces.ServiceEvent{Name: "testapp"}
 	})
 
-	time.AfterFunc(2200*time.Millisecond, func() {
+	time.AfterFunc(300*time.Millisecond, func() {
 		events <- interfaces.ServiceEvent{Name: "unknown"}
 	})
+
+	time.AfterFunc(400*time.Millisecond, func() {
+		r.serviceNames = []string{}
+
+		events <- interfaces.ServiceEvent{Name: "testapp"}
+	})
+
+	return events
 }
 
 func mockService(name string) *services.Service {

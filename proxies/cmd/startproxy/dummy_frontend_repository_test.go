@@ -2,6 +2,7 @@ package startproxy
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -23,6 +24,10 @@ func (r *dummyFrontendRepository) ListFrontends() ([]string, error) {
 }
 
 func (r *dummyFrontendRepository) DescribeFrontend(name string) (*frontends.Frontend, error) {
+	if name == "fail" {
+		return nil, fmt.Errorf("DescribeFrontend(%s)", name)
+	}
+
 	for _, n := range r.frontendNames {
 		if name == n {
 			return mockFrontend(n), nil
@@ -32,14 +37,25 @@ func (r *dummyFrontendRepository) DescribeFrontend(name string) (*frontends.Fron
 	return nil, interfaces.ErrUnknownFrontend
 }
 
-func (r *dummyFrontendRepository) Subscribe(events chan<- interfaces.FrontendEvent) {
-	time.AfterFunc(1200*time.Millisecond, func() {
+func (r *dummyFrontendRepository) Subscribe() <-chan interfaces.FrontendEvent {
+	events := make(chan interfaces.FrontendEvent)
+
+	time.AfterFunc(250*time.Millisecond, func() {
 		events <- interfaces.FrontendEvent{Name: "testapp"}
 	})
 
-	time.AfterFunc(1400*time.Millisecond, func() {
+	time.AfterFunc(350*time.Millisecond, func() {
 		events <- interfaces.FrontendEvent{Name: "unknown"}
 	})
+
+	time.AfterFunc(450*time.Millisecond, func() {
+		r.frontendNames = []string{}
+
+		events <- interfaces.FrontendEvent{Name: "testapp"}
+		events <- interfaces.FrontendEvent{Name: "secure-testapp"}
+	})
+
+	return events
 }
 
 func mockFrontend(name string) *frontends.Frontend {

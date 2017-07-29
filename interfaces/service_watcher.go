@@ -11,7 +11,7 @@ type ServiceEvent struct {
 type ServiceWatcher interface {
 	ServiceRepository
 
-	// Subscribe allows providing a channel through which service events will
+	// Subscribe returns a channel through which service events will
 	// be distributed.
-	Subscribe(events chan<- ServiceEvent)
+	Subscribe() <-chan ServiceEvent
 }

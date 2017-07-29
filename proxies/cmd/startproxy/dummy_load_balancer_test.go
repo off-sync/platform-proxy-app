@@ -20,3 +20,7 @@ func (lb *dummyLoadBalancer) UpsertService(name string, urls ...*url.URL) (http.
 		fmt.Fprintf(w, "Service: %s\n\tURLs: %v", name, urls)
 	}), nil
 }
+
+func (lb *dummyLoadBalancer) DeleteService(name string) {
+	// do nothing
+}

@@ -11,4 +11,7 @@ type LoadBalancer interface {
 	// UpsertService sets the urls for a service. It returns an http.Handler
 	// that can be used to make requests to for this service.
 	UpsertService(name string, urls ...*url.URL) (http.Handler, error)
+
+	// DeleteService deletes the service from the load balancer.
+	DeleteService(name string)
 }
