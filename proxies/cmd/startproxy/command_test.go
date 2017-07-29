@@ -22,30 +22,18 @@ func init() {
 
 func TestNewCommand(t *testing.T) {
 	c, err := NewCommand(
-		&dummyFrontendRepository{},
 		&dummyServiceRepository{},
+		&dummyFrontendRepository{},
 		logger)
 
 	assert.NotNil(t, c)
 	assert.Nil(t, err)
-}
-
-func TestNewCommandShouldReturnErrorOnMissingFrontendRepository(t *testing.T) {
-	c, err := NewCommand(
-		nil,
-		&dummyServiceRepository{},
-		logger)
-
-	assert.Nil(t, c)
-	assert.NotNil(t, err)
-
-	assert.Equal(t, ErrFrontendRepositoryMissing, err)
 }
 
 func TestNewCommandShouldReturnErrorOnMissingServiceRepository(t *testing.T) {
 	c, err := NewCommand(
-		&dummyFrontendRepository{},
 		nil,
+		&dummyFrontendRepository{},
 		logger)
 
 	assert.Nil(t, c)
@@ -54,21 +42,11 @@ func TestNewCommandShouldReturnErrorOnMissingServiceRepository(t *testing.T) {
 	assert.Equal(t, ErrServiceRepositoryMissing, err)
 }
 
-func TestNewCommandWithWatchers(t *testing.T) {
-	fr := &dummyFrontendRepository{}
-	sr := &dummyServiceRepository{}
-
-	c, err := NewCommandWithWatchers(fr, sr, fr, sr, logger)
-
-	assert.NotNil(t, c)
-	assert.Nil(t, err)
-}
-
-func TestNewCommandWithWatchersShouldReturnErrorOnMissingFrontendRepository(t *testing.T) {
-	fr := &dummyFrontendRepository{}
-	sr := &dummyServiceRepository{}
-
-	c, err := NewCommandWithWatchers(nil, sr, fr, sr, logger)
+func TestNewCommandShouldReturnErrorOnMissingFrontendRepository(t *testing.T) {
+	c, err := NewCommand(
+		&dummyServiceRepository{},
+		nil,
+		logger)
 
 	assert.Nil(t, c)
 	assert.NotNil(t, err)
@@ -76,54 +54,18 @@ func TestNewCommandWithWatchersShouldReturnErrorOnMissingFrontendRepository(t *t
 	assert.Equal(t, ErrFrontendRepositoryMissing, err)
 }
 
-func TestNewCommandWithWatchersShouldReturnErrorOnMissingServiceRepository(t *testing.T) {
-	fr := &dummyFrontendRepository{}
-	sr := &dummyServiceRepository{}
-
-	c, err := NewCommandWithWatchers(fr, nil, fr, sr, logger)
-
-	assert.Nil(t, c)
-	assert.NotNil(t, err)
-
-	assert.Equal(t, ErrServiceRepositoryMissing, err)
-}
-
-func TestNewCommandWithWatchersShouldReturnErrorOnMissingFrontendWatcher(t *testing.T) {
-	fr := &dummyFrontendRepository{}
-	sr := &dummyServiceRepository{}
-
-	c, err := NewCommandWithWatchers(fr, sr, nil, sr, logger)
-
-	assert.Nil(t, c)
-	assert.NotNil(t, err)
-
-	assert.Equal(t, ErrFrontendWatcherMissing, err)
-}
-
-func TestNewCommandWithWatchersShouldReturnErrorOnMissingServiceWatcher(t *testing.T) {
-	fr := &dummyFrontendRepository{}
-	sr := &dummyServiceRepository{}
-
-	c, err := NewCommandWithWatchers(fr, sr, fr, nil, logger)
-
-	assert.Nil(t, c)
-	assert.NotNil(t, err)
-
-	assert.Equal(t, ErrServiceWatcherMissing, err)
-}
-
 func TestExecute(t *testing.T) {
-	fr := &dummyFrontendRepository{frontendNames: []string{"testapp"}}
 	sr := &dummyServiceRepository{serviceNames: []string{"testapp"}}
+	fr := &dummyFrontendRepository{frontendNames: []string{"testapp", "noservice"}}
 
-	c, _ := NewCommandWithWatchers(fr, sr, fr, sr, logger)
+	c, _ := NewCommand(sr, fr, logger)
 
 	ctx, cancel := context.WithCancel(context.Background())
 
 	err := c.Execute(&Model{
 		Ctx:             ctx,
-		HTTPWebServer:   &dummyWebServer{},
-		HTTPSWebServer:  &dummyWebServer{},
+		WebServer:       &dummyWebServer{},
+		SecureWebServer: &dummyWebServer{},
 		LoadBalancer:    &dummyLoadBalancer{},
 		PollingDuration: 1 * time.Second,
 	})
@@ -135,29 +77,130 @@ func TestExecute(t *testing.T) {
 	cancel()
 }
 
-func TestExecuteShouldReturnErrorOnMissingWebServers(t *testing.T) {
-	fr := &dummyFrontendRepository{}
+func TestExecuteShouldLogRepositoryErrors(t *testing.T) {
 	sr := &dummyServiceRepository{}
+	fr := &dummyFrontendRepository{}
 
-	c, _ := NewCommandWithWatchers(fr, sr, fr, sr, logger)
+	c, _ := NewCommand(sr, fr, logger)
 
-	err := c.Execute(&Model{})
+	ctx, cancel := context.WithCancel(context.Background())
+
+	err := c.Execute(&Model{
+		Ctx:             ctx,
+		WebServer:       &dummyWebServer{},
+		SecureWebServer: &dummyWebServer{},
+		LoadBalancer:    &dummyLoadBalancer{},
+		PollingDuration: 60 * time.Second,
+	})
+
+	assert.Nil(t, err)
+
+	cancel()
+}
+
+func TestExecuteShouldLogWebServerErrors(t *testing.T) {
+	sr := &dummyServiceRepository{serviceNames: []string{"testapp"}}
+	fr := &dummyFrontendRepository{frontendNames: []string{"testapp", "secure-testapp"}}
+
+	c, _ := NewCommand(sr, fr, logger)
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	err := c.Execute(&Model{
+		Ctx:             ctx,
+		WebServer:       &dummyWebServer{FailAll: true},
+		SecureWebServer: &dummyWebServer{FailAll: true},
+		LoadBalancer:    &dummyLoadBalancer{},
+		PollingDuration: 60 * time.Second,
+	})
+
+	assert.Nil(t, err)
+
+	cancel()
+}
+
+func TestExecuteShouldLogLoadBalancerErrors(t *testing.T) {
+	sr := &dummyServiceRepository{serviceNames: []string{"testapp"}}
+	fr := &dummyFrontendRepository{frontendNames: []string{"testapp"}}
+
+	c, _ := NewCommand(sr, fr, logger)
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	err := c.Execute(&Model{
+		Ctx:             ctx,
+		WebServer:       &dummyWebServer{},
+		SecureWebServer: &dummyWebServer{},
+		LoadBalancer:    &dummyLoadBalancer{FailAll: true},
+		PollingDuration: 60 * time.Second,
+	})
+
+	assert.Nil(t, err)
+
+	cancel()
+}
+
+func TestExecuteShouldReturnErrorOnMissingWebServer(t *testing.T) {
+	sr := &dummyServiceRepository{}
+	fr := &dummyFrontendRepository{}
+
+	c, _ := NewCommand(sr, fr, logger)
+
+	err := c.Execute(&Model{
+		Ctx:             context.Background(),
+		SecureWebServer: &dummyWebServer{},
+		LoadBalancer:    &dummyLoadBalancer{},
+	})
 
 	assert.NotNil(t, err)
 
-	assert.Equal(t, ErrWebServersMissing, err)
+	assert.Equal(t, ErrWebServerMissing, err)
+}
+
+func TestExecuteShouldReturnErrorOnMissingSecureWebServer(t *testing.T) {
+	sr := &dummyServiceRepository{}
+	fr := &dummyFrontendRepository{}
+
+	c, _ := NewCommand(sr, fr, logger)
+
+	err := c.Execute(&Model{
+		Ctx:          context.Background(),
+		WebServer:    &dummyWebServer{},
+		LoadBalancer: &dummyLoadBalancer{},
+	})
+
+	assert.NotNil(t, err)
+
+	assert.Equal(t, ErrSecureWebServerMissing, err)
+}
+
+func TestExecuteShouldReturnErrorOnMissingLoadBalancer(t *testing.T) {
+	sr := &dummyServiceRepository{}
+	fr := &dummyFrontendRepository{}
+
+	c, _ := NewCommand(sr, fr, logger)
+
+	err := c.Execute(&Model{
+		Ctx:             context.Background(),
+		WebServer:       &dummyWebServer{},
+		SecureWebServer: &dummyWebServer{},
+	})
+
+	assert.NotNil(t, err)
+
+	assert.Equal(t, ErrLoadBalancerMissing, err)
 }
 
 func TestExecuteShouldAcceptNilContext(t *testing.T) {
-	fr := &dummyFrontendRepository{}
 	sr := &dummyServiceRepository{}
+	fr := &dummyFrontendRepository{}
 
-	c, _ := NewCommandWithWatchers(fr, sr, fr, sr, logger)
+	c, _ := NewCommand(sr, fr, logger)
 
 	err := c.Execute(&Model{
-		HTTPWebServer:   &dummyWebServer{},
-		HTTPSWebServer:  &dummyWebServer{},
 		Ctx:             nil,
+		WebServer:       &dummyWebServer{},
+		SecureWebServer: &dummyWebServer{},
 		LoadBalancer:    &dummyLoadBalancer{},
 		PollingDuration: 60 * time.Second,
 	})
@@ -166,17 +209,17 @@ func TestExecuteShouldAcceptNilContext(t *testing.T) {
 }
 
 func TestExecuteShouldReturnErrorOnNegativeDuration(t *testing.T) {
-	fr := &dummyFrontendRepository{}
 	sr := &dummyServiceRepository{}
+	fr := &dummyFrontendRepository{}
 
-	c, _ := NewCommandWithWatchers(fr, sr, fr, sr, logger)
+	c, _ := NewCommand(sr, fr, logger)
 
 	ctx, cancel := context.WithCancel(context.Background())
 
 	err := c.Execute(&Model{
-		HTTPWebServer:   &dummyWebServer{},
-		HTTPSWebServer:  &dummyWebServer{},
 		Ctx:             ctx,
+		WebServer:       &dummyWebServer{},
+		SecureWebServer: &dummyWebServer{},
 		LoadBalancer:    &dummyLoadBalancer{},
 		PollingDuration: -1 * time.Second,
 	})

@@ -2,19 +2,12 @@ package startproxy
 
 import (
 	"context"
-	"fmt"
-	"net"
 	"net/http"
 	"net/url"
 	"sync"
 	"time"
 
-	"github.com/vulcand/oxy/forward"
-	"github.com/vulcand/oxy/roundrobin"
-
 	"github.com/off-sync/platform-proxy-app/interfaces"
-	"github.com/off-sync/platform-proxy-domain/frontends"
-	"github.com/off-sync/platform-proxy-domain/services"
 )
 
 type proxy struct {
@@ -28,15 +21,13 @@ type proxy struct {
 
 	// configuration
 	frontendRepository interfaces.FrontendRepository
-	frontendWatcher    interfaces.FrontendWatcher
 	serviceRepository  interfaces.ServiceRepository
-	serviceWatcher     interfaces.ServiceWatcher
 	pollingDuration    time.Duration
 
 	// request handling
-	httpServer   interfaces.WebServer
-	httpsServer  interfaces.WebServer
-	loadBalancer interfaces.LoadBalancer
+	webServer       interfaces.WebServer
+	secureWebServer interfaces.SecureWebServer
+	loadBalancer    interfaces.LoadBalancer
 
 	// internal state
 	serviceHandlers map[string]http.Handler
@@ -45,124 +36,111 @@ type proxy struct {
 func newProxy(
 	ctx context.Context,
 	logger interfaces.Logger,
-	frontendRepository interfaces.FrontendRepository,
-	frontendWatcher interfaces.FrontendWatcher,
 	serviceRepository interfaces.ServiceRepository,
-	serviceWatcher interfaces.ServiceWatcher,
+	frontendRepository interfaces.FrontendRepository,
 	pollingDuration time.Duration,
-	httpServer, httpsServer interfaces.WebServer,
+	webServer interfaces.WebServer,
+	secureWebServer interfaces.SecureWebServer,
 	loadBalancer interfaces.LoadBalancer) *proxy {
+
 	return &proxy{
 		ctx:                ctx,
 		logger:             logger,
-		frontendRepository: frontendRepository,
-		frontendWatcher:    frontendWatcher,
 		serviceRepository:  serviceRepository,
-		serviceWatcher:     serviceWatcher,
+		frontendRepository: frontendRepository,
 		pollingDuration:    pollingDuration,
-		httpServer:         httpServer,
-		httpsServer:        httpsServer,
+		webServer:          webServer,
+		secureWebServer:    secureWebServer,
 		loadBalancer:       loadBalancer,
 		serviceHandlers:    make(map[string]http.Handler),
 	}
 }
 
 func (p *proxy) run() {
-	services, err := p.serviceRepository.FindAll()
-	if err != nil {
-		p.logger.
-			WithError(err).
-			Error("unable to get services")
-	} else {
-		for _, service := range services {
-			err = p.configureService(service)
-			if err != nil {
-				p.logger.
-					WithError(err).
-					Error("unable to configure service")
-			}
-		}
-	}
+	// configure all services and frontends
+	p.configure()
 
-	frontends, err := p.frontendRepository.FindAll()
-	if err != nil {
-		p.logger.
-			WithError(err).
-			Error("unable to get frontends")
-	} else {
-		for _, frontend := range frontends {
-			err = p.configureFrontend(frontend)
-			if err != nil {
-				p.logger.
-					WithError(err).
-					Error("unable to configure frontend")
-			}
-		}
-	}
-
-	frontendEvents := make(chan interfaces.FrontendEvent, 10)
-	defer close(frontendEvents)
-
-	if p.frontendWatcher != nil {
-		p.logger.Info("subscribing to frontend watcher")
-
-		p.frontendWatcher.Subscribe(frontendEvents)
-	}
-
+	// subscribe to service events
 	serviceEvents := make(chan interfaces.ServiceEvent, 10)
 	defer close(serviceEvents)
 
-	if p.serviceWatcher != nil {
+	if w, ok := p.serviceRepository.(interfaces.ServiceWatcher); ok {
 		p.logger.Info("subscribing to service watcher")
 
-		p.serviceWatcher.Subscribe(serviceEvents)
+		w.Subscribe(serviceEvents)
+	}
+
+	// subscribe to frontend events
+	frontendEvents := make(chan interfaces.FrontendEvent, 10)
+	defer close(frontendEvents)
+
+	if w, ok := p.frontendRepository.(interfaces.FrontendWatcher); ok {
+		p.logger.Info("subscribing to frontend watcher")
+
+		w.Subscribe(frontendEvents)
 	}
 
 	// create polling ticker
-	if p.pollingDuration < 1 {
-		p.pollingDuration = 5 * time.Minute
-	}
-
 	poll := time.Tick(p.pollingDuration)
 
 	for {
 		select {
+		// respond to the context closing
 		case <-p.ctx.Done():
 			p.logger.Info("context is done: returning")
 			return
+
+		// respond to polling events
 		case <-poll:
 			p.logger.Info("polling configuration")
+			p.configure()
 			break
+
+		// respond to service events
 		case serviceEvent := <-serviceEvents:
 			p.logger.
 				WithField("name", serviceEvent.Name).
 				Info("received service event")
 
-			service, err := p.serviceRepository.FindByName(serviceEvent.Name)
-			if err != nil {
-				p.logger.
-					WithError(err).
-					Error("unable to find service by name")
-			} else {
-				p.configureService(service)
-			}
+			p.configureService(serviceEvent.Name)
 
 			break
+
+		// respond to frontend events
 		case frontendEvent := <-frontendEvents:
 			p.logger.
 				WithField("name", frontendEvent.Name).
 				Info("received frontend event")
 
-			frontend, err := p.frontendRepository.FindByName(frontendEvent.Name)
-			if err != nil {
-				p.logger.
-					WithError(err).
-					Error("unable to find frontend by name")
-			} else {
-				p.configureFrontend(frontend)
-			}
+			p.configureFrontend(frontendEvent.Name)
 
 			break
+		}
+	}
+}
+
+func (p *proxy) configure() {
+	// configure services first to create the required handlers
+	services, err := p.serviceRepository.ListServices()
+	if err != nil {
+		p.logger.
+			WithError(err).
+			Error("listing services")
+	} else {
+		for _, service := range services {
+			p.configureService(service)
+		}
+	}
+
+	// configure frontends
+	frontends, err := p.frontendRepository.ListFrontends()
+	if err != nil {
+		p.logger.
+			WithError(err).
+			Error("listing frontends")
+	} else {
+		for _, frontend := range frontends {
+			p.configureFrontend(frontend)
 		}
 	}
 }
@@ -176,7 +154,19 @@ func (p *proxy) getServiceHandler(serviceName string) http.Handler {
 	return handler
 }
 
-func (p *proxy) configureService(service *services.Service) error {
+func (p *proxy) configureService(name string) {
+	// describe service
+	service, err := p.serviceRepository.DescribeService(name)
+	if err != nil {
+		p.logger.
+			WithError(err).
+			WithField("name", name).
+			Error("describing service")
+
+		return
+	}
+
+	// lock internal state
 	p.Lock()
 	defer p.Unlock()
 
@@ -185,37 +175,35 @@ func (p *proxy) configureService(service *services.Service) error {
 		WithField("servers", service.Servers).
 		Debug("configuring service")
 
-	fwd, err := forward.New()
+	handler, err := p.loadBalancer.UpsertService(service.Name, service.Servers...)
 	if err != nil {
-		return err
+		p.logger.
+			WithError(err).
+			WithField("name", name).
+			Error("upserting service")
+
+		// set the service handler to return an internal server error on each
+		// request
+		handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			http.Error(w, "service not configured", http.StatusInternalServerError)
+		})
 	}
 
-	lb, err := roundrobin.New(fwd)
-	if err != nil {
-		return err
-	}
-
-	for _, server := range service.Servers {
-		addrs, err := net.LookupHost(server.Hostname())
-		if err != nil {
-			return err
-		}
-
-		for _, addr := range addrs {
-			u := &url.URL{}
-			*u = *server
-			u.Host = fmt.Sprintf("%s:%s", addr, server.Port())
-
-			lb.UpsertServer(u)
-		}
-	}
-
-	p.serviceHandlers[service.Name] = lb
-
-	return nil
+	p.serviceHandlers[service.Name] = handler
 }
 
-func (p *proxy) configureFrontend(frontend *frontends.Frontend) error {
+func (p *proxy) configureFrontend(name string) {
+	// get frontend from repository
+	frontend, err := p.frontendRepository.DescribeFrontend(name)
+	if err != nil {
+		p.logger.
+			WithError(err).
+			WithField("name", name).
+			Error("describing frontend")
+
+		return
+	}
+
 	p.Lock()
 	defer p.Unlock()
 
@@ -227,18 +215,24 @@ func (p *proxy) configureFrontend(frontend *frontends.Frontend) error {
 
 	if frontend.Certificate != nil {
 		// configure HTTPS
-		err := p.httpsServer.UpsertCertificate(
+		err := p.secureWebServer.UpsertCertificate(
 			frontend.URL.Host,
 			frontend.Certificate)
 		if err != nil {
-			return err
+			p.logger.
+				WithError(err).
+				WithField("host", frontend.URL.Host).
+				Error("upserting certificate")
 		}
 
-		err = p.httpsServer.UpsertRoute(
+		err = p.secureWebServer.UpsertRoute(
 			frontend.URL,
 			p.getServiceHandler(frontend.ServiceName))
 		if err != nil {
-			return err
+			p.logger.
+				WithError(err).
+				WithField("url", frontend.URL).
+				Error("upserting route")
 		}
 
 		// configure HTTP redirect
@@ -246,22 +240,26 @@ func (p *proxy) configureFrontend(frontend *frontends.Frontend) error {
 		*httpURL = *frontend.URL
 		httpURL.Scheme = "http"
 
-		err = p.httpServer.UpsertRoute(httpURL,
+		err = p.webServer.UpsertRoute(httpURL,
 			http.RedirectHandler(
 				frontend.URL.String(),
 				http.StatusMovedPermanently))
 		if err != nil {
-			return err
+			p.logger.
+				WithError(err).
+				WithField("url", frontend.URL).
+				Error("upserting route")
 		}
 	} else {
 		// configure HTTP
-		err := p.httpServer.UpsertRoute(
+		err := p.webServer.UpsertRoute(
 			frontend.URL,
 			p.getServiceHandler(frontend.ServiceName))
 		if err != nil {
-			return err
+			p.logger.
+				WithError(err).
+				WithField("url", frontend.URL).
+				Error("upserting route")
 		}
 	}
-
-	return nil
 }

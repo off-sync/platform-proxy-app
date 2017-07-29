@@ -2,6 +2,7 @@ package startproxy
 
 import (
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/off-sync/platform-proxy-app/interfaces"
@@ -12,21 +13,16 @@ type dummyFrontendRepository struct {
 	frontendNames []string
 }
 
-func (r *dummyFrontendRepository) FindAll() ([]*frontends.Frontend, error) {
+func (r *dummyFrontendRepository) ListFrontends() ([]string, error) {
 	if len(r.frontendNames) < 1 {
 		// return error in case the list is empty
 		return nil, errors.New("no frontend URLs configured")
 	}
 
-	fs := make([]*frontends.Frontend, len(r.frontendNames))
-	for i, n := range r.frontendNames {
-		fs[i] = mockFrontend(n)
-	}
-
-	return fs, nil
+	return r.frontendNames, nil
 }
 
-func (r *dummyFrontendRepository) FindByName(name string) (*frontends.Frontend, error) {
+func (r *dummyFrontendRepository) DescribeFrontend(name string) (*frontends.Frontend, error) {
 	for _, n := range r.frontendNames {
 		if name == n {
 			return mockFrontend(n), nil
@@ -47,7 +43,12 @@ func (r *dummyFrontendRepository) Subscribe(events chan<- interfaces.FrontendEve
 }
 
 func mockFrontend(name string) *frontends.Frontend {
-	f, err := frontends.NewFrontend(name, "http://"+name, nil, name)
+	var cert *frontends.Certificate
+	if strings.HasPrefix(name, "secure-") {
+		cert = &frontends.Certificate{}
+	}
+
+	f, err := frontends.NewFrontend(name, "http://"+name, cert, name)
 	if err != nil {
 		// should not happen
 		panic(err)

@@ -13,10 +13,10 @@ var (
 
 // ServiceRepository is a repository for services.
 type ServiceRepository interface {
-	// FindAll returns all services contained in this repository.
-	FindAll() ([]*services.Service, error)
+	// ListServices returns all service names contained in this repository.
+	ListServices() ([]string, error)
 
-	// FindByName returns the service with the specified name. If no service
+	// DescribeService returns the service with the specified name. If no service
 	// exists with that name an ErrUnknownService is returned.
-	FindByName(name string) (*services.Service, error)
+	DescribeService(name string) (*services.Service, error)
 }

@@ -13,14 +13,14 @@ type Model struct {
 	// command is executed. This is achieved by closing the Done channel.
 	Ctx context.Context
 
-	// HTTPWebServer specifies the web server used for redirecting requests
+	// WebServer specifies the web server used for redirecting requests
 	// for frontends with a certificate to the equivalent HTTPS URL. Frontends
 	// without a certificate will be served on this web server directly.
-	HTTPWebServer interfaces.WebServer
+	WebServer interfaces.WebServer
 
-	// HTTPSWebServer specifies the web server used for frontends with a
+	// SecureWebServer specifies the web server used for frontends with a
 	// certificate.
-	HTTPSWebServer interfaces.WebServer
+	SecureWebServer interfaces.SecureWebServer
 
 	// LoadBalancer specifies the load balancer to use for making services
 	// requests.

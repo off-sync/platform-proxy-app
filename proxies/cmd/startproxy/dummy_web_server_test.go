@@ -1,6 +1,7 @@
 package startproxy
 
 import (
+	"fmt"
 	"net/http"
 	"net/url"
 
@@ -8,10 +9,15 @@ import (
 )
 
 type dummyWebServer struct {
+	FailAll bool
+	routes  map[string]http.Handler
 }
 
 func (s *dummyWebServer) UpsertRoute(route *url.URL, handler http.Handler) error {
-	// do nothing
+	if s.FailAll {
+		return fmt.Errorf("UpsertRoute(%v, %v)", route, handler)
+	}
+
 	return nil
 }
 
@@ -20,6 +26,9 @@ func (s *dummyWebServer) DeleteRoute(route *url.URL) {
 }
 
 func (s *dummyWebServer) UpsertCertificate(domainName string, cert *frontends.Certificate) error {
-	// do nothing
+	if s.FailAll {
+		return fmt.Errorf("UpsertCertificate(%s, %v)", domainName, cert)
+	}
+
 	return nil
 }
