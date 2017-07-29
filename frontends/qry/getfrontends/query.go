@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	"github.com/off-sync/platform-proxy-app/interfaces"
+	"github.com/off-sync/platform-proxy-domain/frontends"
 )
 
 // Errors
@@ -16,7 +17,7 @@ type Query struct {
 	repo interfaces.FrontendRepository
 }
 
-// New creates a new Get Frontends Query
+// NewQuery creates a new Get Frontends Query
 func NewQuery(repo interfaces.FrontendRepository) (*Query, error) {
 	if repo == nil {
 		return nil, ErrMissingFrontendRepository
@@ -29,12 +30,21 @@ func NewQuery(repo interfaces.FrontendRepository) (*Query, error) {
 
 // Execute performs the Get Frontends Query using the provided model.
 func (q *Query) Execute(model *Model) (*Result, error) {
-	fs, err := q.repo.FindAll()
+	names, err := q.repo.ListFrontends()
 	if err != nil {
 		return nil, err
 	}
 
-	return &Result{
-		Frontends: fs,
-	}, nil
+	result := &Result{
+		Frontends: make([]*frontends.Frontend, len(names)),
+	}
+
+	for i, name := range names {
+		result.Frontends[i], err = q.repo.DescribeFrontend(name)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return result, nil
 }

@@ -36,6 +36,17 @@ func TestExecute(t *testing.T) {
 	assert.Nil(t, err)
 }
 
+func TestExecuteDescribeFrontendErrorShouldBeReturned(t *testing.T) {
+	q, _ := NewQuery(&dummyRepo{
+		frontendNames: []string{"unknown"},
+	})
+
+	r, err := q.Execute(&Model{})
+
+	assert.Nil(t, r)
+	assert.Equal(t, interfaces.ErrUnknownFrontend, err)
+}
+
 func TestExecuteShouldReturnErrorFromRepository(t *testing.T) {
 	q, _ := NewQuery(&dummyRepo{})
 
@@ -49,21 +60,20 @@ type dummyRepo struct {
 	frontendNames []string
 }
 
-func (r *dummyRepo) FindAll() ([]*frontends.Frontend, error) {
+func (r *dummyRepo) ListFrontends() ([]string, error) {
 	if len(r.frontendNames) < 1 {
 		// return error in case the list is empty
 		return nil, errors.New("no frontend URLs configured")
 	}
 
-	fs := make([]*frontends.Frontend, len(r.frontendNames))
-	for i, n := range r.frontendNames {
-		fs[i] = mockFrontend(n)
-	}
-
-	return fs, nil
+	return r.frontendNames, nil
 }
 
-func (r *dummyRepo) FindByName(name string) (*frontends.Frontend, error) {
+func (r *dummyRepo) DescribeFrontend(name string) (*frontends.Frontend, error) {
+	if name == "unknown" {
+		return nil, interfaces.ErrUnknownFrontend
+	}
+
 	for _, n := range r.frontendNames {
 		if name == n {
 			return mockFrontend(n), nil
