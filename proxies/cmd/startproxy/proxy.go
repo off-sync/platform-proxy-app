@@ -2,10 +2,15 @@ package startproxy
 
 import (
 	"context"
+	"fmt"
+	"net"
 	"net/http"
 	"net/url"
 	"sync"
 	"time"
+
+	"github.com/vulcand/oxy/forward"
+	"github.com/vulcand/oxy/roundrobin"
 
 	"github.com/off-sync/platform-proxy-app/interfaces"
 	"github.com/off-sync/platform-proxy-domain/frontends"
@@ -176,6 +181,33 @@ func (p *proxy) configureService(service *services.Service) error {
 		WithField("name", service.Name).
 		WithField("servers", service.Servers).
 		Debug("configuring service")
+
+	fwd, err := forward.New()
+	if err != nil {
+		return err
+	}
+
+	lb, err := roundrobin.New(fwd)
+	if err != nil {
+		return err
+	}
+
+	for _, server := range service.Servers {
+		addrs, err := net.LookupHost(server.Hostname())
+		if err != nil {
+			return err
+		}
+
+		for _, addr := range addrs {
+			u := &url.URL{}
+			*u = *server
+			u.Host = fmt.Sprintf("%s:%s", addr, server.Port())
+
+			lb.UpsertServer(u)
+		}
+	}
+
+	p.serviceHandlers[service.Name] = lb
 
 	return nil
 }
