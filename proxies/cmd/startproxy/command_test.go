@@ -2,6 +2,8 @@ package startproxy
 
 import (
 	"context"
+	"net/http"
+	"net/url"
 	"testing"
 	"time"
 
@@ -127,15 +129,25 @@ func TestExecuteShouldLogLoadBalancerErrors(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 
+	web := &dummyWebServer{}
+
 	err := c.Execute(&Model{
 		Ctx:             ctx,
-		WebServer:       &dummyWebServer{},
-		SecureWebServer: &dummyWebServer{},
+		WebServer:       web,
+		SecureWebServer: web,
 		LoadBalancer:    &dummyLoadBalancer{FailAll: true},
 		PollingDuration: 60 * time.Second,
 	})
 
 	assert.Nil(t, err)
+
+	// give proxy time to configure
+	time.Sleep(1 * time.Second)
+
+	u, _ := url.Parse("http://testapp")
+	resp := web.Handle(u, &http.Request{})
+
+	assert.Equal(t, "Service not configured\n", resp)
 
 	cancel()
 }

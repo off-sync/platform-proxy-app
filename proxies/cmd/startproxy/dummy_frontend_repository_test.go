@@ -43,12 +43,15 @@ func (r *dummyFrontendRepository) Subscribe(events chan<- interfaces.FrontendEve
 }
 
 func mockFrontend(name string) *frontends.Frontend {
+	var scheme = "http://"
 	var cert *frontends.Certificate
+
 	if strings.HasPrefix(name, "secure-") {
+		scheme = "https://"
 		cert = &frontends.Certificate{}
 	}
 
-	f, err := frontends.NewFrontend(name, "http://"+name, cert, name)
+	f, err := frontends.NewFrontend(name, scheme+name, cert, name)
 	if err != nil {
 		// should not happen
 		panic(err)

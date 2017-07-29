@@ -185,7 +185,7 @@ func (p *proxy) configureService(name string) {
 		// set the service handler to return an internal server error on each
 		// request
 		handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			http.Error(w, "service not configured", http.StatusInternalServerError)
+			http.Error(w, "Service not configured", http.StatusInternalServerError)
 		})
 	}
 
