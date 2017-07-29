@@ -40,6 +40,10 @@ func (r *dummyFrontendRepository) Subscribe(events chan<- interfaces.FrontendEve
 	time.AfterFunc(1200*time.Millisecond, func() {
 		events <- interfaces.FrontendEvent{Name: "testapp"}
 	})
+
+	time.AfterFunc(1400*time.Millisecond, func() {
+		events <- interfaces.FrontendEvent{Name: "unknown"}
+	})
 }
 
 func mockFrontend(name string) *frontends.Frontend {

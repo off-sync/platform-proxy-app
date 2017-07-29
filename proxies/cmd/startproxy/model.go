@@ -22,6 +22,10 @@ type Model struct {
 	// certificate.
 	HTTPSWebServer interfaces.WebServer
 
+	// LoadBalancer specifies the load balancer to use for making services
+	// requests.
+	LoadBalancer interfaces.LoadBalancer
+
 	// PollingDuration defines the frequency at which the complete configuration
 	// of the proxy is refreshed. This can be used when watchers are not
 	// available, or when watchers are not reliable (i.e. change events could be

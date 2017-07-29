@@ -33,9 +33,10 @@ type proxy struct {
 	serviceWatcher     interfaces.ServiceWatcher
 	pollingDuration    time.Duration
 
-	// web servers
-	httpServer  interfaces.WebServer
-	httpsServer interfaces.WebServer
+	// request handling
+	httpServer   interfaces.WebServer
+	httpsServer  interfaces.WebServer
+	loadBalancer interfaces.LoadBalancer
 
 	// internal state
 	serviceHandlers map[string]http.Handler
@@ -49,7 +50,8 @@ func newProxy(
 	serviceRepository interfaces.ServiceRepository,
 	serviceWatcher interfaces.ServiceWatcher,
 	pollingDuration time.Duration,
-	httpServer, httpsServer interfaces.WebServer) *proxy {
+	httpServer, httpsServer interfaces.WebServer,
+	loadBalancer interfaces.LoadBalancer) *proxy {
 	return &proxy{
 		ctx:                ctx,
 		logger:             logger,
@@ -60,6 +62,7 @@ func newProxy(
 		pollingDuration:    pollingDuration,
 		httpServer:         httpServer,
 		httpsServer:        httpsServer,
+		loadBalancer:       loadBalancer,
 		serviceHandlers:    make(map[string]http.Handler),
 	}
 }

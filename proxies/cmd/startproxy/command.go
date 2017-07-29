@@ -14,6 +14,7 @@ var (
 	ErrServiceRepositoryMissing  = errors.New("service repository missing")
 	ErrServiceWatcherMissing     = errors.New("service watcher missing")
 	ErrWebServersMissing         = errors.New("both web servers missing, provide at least one")
+	ErrLoadBalancerMissing       = errors.New("load balancer missing")
 	ErrInvalidPollingDuration    = errors.New("invalid polling duration, must greater than or equal to 0")
 )
 
@@ -80,6 +81,10 @@ func (c *Command) Execute(model *Model) error {
 		return ErrWebServersMissing
 	}
 
+	if model.LoadBalancer == nil {
+		return ErrLoadBalancerMissing
+	}
+
 	if model.PollingDuration < 0 {
 		return ErrInvalidPollingDuration
 	}
@@ -97,7 +102,8 @@ func (c *Command) Execute(model *Model) error {
 		c.serviceWatcher,
 		model.PollingDuration,
 		model.HTTPWebServer,
-		model.HTTPSWebServer)
+		model.HTTPSWebServer,
+		model.LoadBalancer)
 
 	go proxy.run()
 

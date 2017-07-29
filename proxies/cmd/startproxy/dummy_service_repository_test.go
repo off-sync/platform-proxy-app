@@ -40,6 +40,10 @@ func (r *dummyServiceRepository) Subscribe(events chan<- interfaces.ServiceEvent
 	time.AfterFunc(2200*time.Millisecond, func() {
 		events <- interfaces.ServiceEvent{Name: "testapp"}
 	})
+
+	time.AfterFunc(2200*time.Millisecond, func() {
+		events <- interfaces.ServiceEvent{Name: "unknown"}
+	})
 }
 
 func mockService(name string) *services.Service {

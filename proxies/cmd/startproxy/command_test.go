@@ -124,6 +124,7 @@ func TestExecute(t *testing.T) {
 		Ctx:             ctx,
 		HTTPWebServer:   &dummyWebServer{},
 		HTTPSWebServer:  &dummyWebServer{},
+		LoadBalancer:    &dummyLoadBalancer{},
 		PollingDuration: 1 * time.Second,
 	})
 
@@ -157,6 +158,7 @@ func TestExecuteShouldAcceptNilContext(t *testing.T) {
 		HTTPWebServer:   &dummyWebServer{},
 		HTTPSWebServer:  &dummyWebServer{},
 		Ctx:             nil,
+		LoadBalancer:    &dummyLoadBalancer{},
 		PollingDuration: 60 * time.Second,
 	})
 
@@ -175,6 +177,7 @@ func TestExecuteShouldReturnErrorOnNegativeDuration(t *testing.T) {
 		HTTPWebServer:   &dummyWebServer{},
 		HTTPSWebServer:  &dummyWebServer{},
 		Ctx:             ctx,
+		LoadBalancer:    &dummyLoadBalancer{},
 		PollingDuration: -1 * time.Second,
 	})
 
