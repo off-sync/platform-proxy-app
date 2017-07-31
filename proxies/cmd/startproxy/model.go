@@ -9,18 +9,22 @@ import (
 
 // Model provides the input for the Start Proxy Command Execute method.
 type Model struct {
-	// HTTPWebServer specifies the web server used for redirecting requests
-	// for frontends with a certificate to the equivalent HTTPS URL. Frontends
-	// without a certificate will be served on this web server directly.
-	HTTPWebServer interfaces.WebServer
-
-	// HTTPSWebServer specifies the web server used for frontends with a
-	// certificate.
-	HTTPSWebServer interfaces.WebServer
-
 	// Ctx is used to provide a means of stopping the created proxy once the
 	// command is executed. This is achieved by closing the Done channel.
 	Ctx context.Context
+
+	// WebServer specifies the web server used for redirecting requests
+	// for frontends with a certificate to the equivalent HTTPS URL. Frontends
+	// without a certificate will be served on this web server directly.
+	WebServer interfaces.WebServer
+
+	// SecureWebServer specifies the web server used for frontends with a
+	// certificate.
+	SecureWebServer interfaces.SecureWebServer
+
+	// LoadBalancer specifies the load balancer to use for making services
+	// requests.
+	LoadBalancer interfaces.LoadBalancer
 
 	// PollingDuration defines the frequency at which the complete configuration
 	// of the proxy is refreshed. This can be used when watchers are not

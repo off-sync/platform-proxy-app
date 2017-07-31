@@ -9,5 +9,9 @@ type FrontendEvent struct {
 // FrontendWatcher defines an interface for a frontend watcher against which
 // it is possible to subscribe for frontend changes.
 type FrontendWatcher interface {
-	Subscribe(events chan<- FrontendEvent)
+	FrontendRepository
+
+	// Subscribe returns a channel through which frontend events will
+	// be distributed.
+	Subscribe() <-chan FrontendEvent
 }

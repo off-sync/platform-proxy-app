@@ -13,10 +13,10 @@ var (
 
 // FrontendRepository is a repository for frontends.
 type FrontendRepository interface {
-	// FindAll returns all frontends contained in this repository.
-	FindAll() ([]*frontends.Frontend, error)
+	// ListFrontends returns all frontend names contained in this repository.
+	ListFrontends() ([]string, error)
 
-	// FindByName returns the frontend with the specified name. If no frontend
-	// exists with that name an ErrUnknownFrontend is returned.
-	FindByName(name string) (*frontends.Frontend, error)
+	// DescribeFrontend returns the frontend with the specified name. If no
+	// frontend	exists with that name an ErrUnknownFrontend is returned.
+	DescribeFrontend(name string) (*frontends.Frontend, error)
 }
