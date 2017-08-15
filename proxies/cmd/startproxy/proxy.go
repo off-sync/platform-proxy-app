@@ -88,17 +88,19 @@ func (p *proxy) run() {
 	}
 
 	// create polling ticker
-	poll := time.Tick(p.pollingDuration)
+	pollTicker := time.NewTicker(p.pollingDuration)
 
 	for {
 		select {
 		// respond to the context closing
 		case <-p.ctx.Done():
+			pollTicker.Stop()
+
 			p.logger.Info("context is done: returning")
 			return
 
-		// respond to polling events
-		case <-poll:
+			// respond to polling events
+		case <-pollTicker.C:
 			p.logger.Info("polling configuration")
 			p.configure()
 			break
