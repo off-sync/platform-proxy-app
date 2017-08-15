@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"net/url"
+	"sync"
 	"time"
 
 	"github.com/off-sync/platform-proxy-app/interfaces"
@@ -12,6 +13,7 @@ import (
 type proxy struct {
 	// context
 	ctx context.Context
+	wg  *sync.WaitGroup
 
 	// logging
 	logger interfaces.Logger
@@ -43,6 +45,7 @@ type frontendConfig struct {
 
 func newProxy(
 	ctx context.Context,
+	wg *sync.WaitGroup,
 	logger interfaces.Logger,
 	serviceRepository interfaces.ServiceRepository,
 	frontendRepository interfaces.FrontendRepository,
@@ -53,6 +56,7 @@ func newProxy(
 
 	return &proxy{
 		ctx:                ctx,
+		wg:                 wg,
 		logger:             logger,
 		serviceRepository:  serviceRepository,
 		frontendRepository: frontendRepository,
@@ -90,11 +94,14 @@ func (p *proxy) run() {
 	// create polling ticker
 	pollTicker := time.NewTicker(p.pollingDuration)
 
+	p.wg.Add(1)
+
 	for {
 		select {
 		// respond to the context closing
 		case <-p.ctx.Done():
 			pollTicker.Stop()
+			p.wg.Done()
 
 			p.logger.Info("context is done: returning")
 			return
