@@ -3,6 +3,7 @@ package startproxy
 import (
 	"context"
 	"errors"
+	"sync"
 
 	"github.com/off-sync/platform-proxy-app/interfaces"
 )
@@ -68,8 +69,13 @@ func (c *Command) Execute(model *Model) error {
 		model.Ctx = context.Background()
 	}
 
+	if model.WaitGroup == nil {
+		model.WaitGroup = &sync.WaitGroup{}
+	}
+
 	proxy := newProxy(
 		model.Ctx,
+		model.WaitGroup,
 		c.logger,
 		c.serviceRepository,
 		c.frontendRepository,

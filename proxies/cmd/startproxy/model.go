@@ -2,6 +2,7 @@ package startproxy
 
 import (
 	"context"
+	"sync"
 	"time"
 
 	"github.com/off-sync/platform-proxy-app/interfaces"
@@ -12,6 +13,10 @@ type Model struct {
 	// Ctx is used to provide a means of stopping the created proxy once the
 	// command is executed. This is achieved by closing the Done channel.
 	Ctx context.Context
+
+	// WaitGroup allows the Start Proxy command to signal to the calling process
+	// that is finished cleaning up.
+	WaitGroup *sync.WaitGroup
 
 	// WebServer specifies the web server used for redirecting requests
 	// for frontends with a certificate to the equivalent HTTPS URL. Frontends
