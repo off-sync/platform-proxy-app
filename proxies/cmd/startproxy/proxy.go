@@ -170,6 +170,8 @@ func (p *proxy) configure() {
 
 		for _, frontend := range frontends {
 			p.configureFrontend(frontend)
+
+			currentFrontends[frontend] = true
 		}
 
 		for frontend := range p.frontendConfigs {
